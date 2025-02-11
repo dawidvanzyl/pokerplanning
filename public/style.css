@@ -1,0 +1,73 @@
+/* style.css */
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 20px;
+}
+
+#login {
+  margin-top: 50px;
+}
+
+.card-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.card {
+  padding: 20px;
+  font-size: 20px;
+  background-color: white;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  min-width: 50px;
+}
+
+.card:hover {
+  background-color: #ddd;
+}
+
+.selected {
+  background-color: #4CAF50;
+  color: white;
+}
+
+button {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  background-color: #008CBA;
+  color: white;
+}
+
+#resetBtn {
+  background-color: #f44336;
+}
+
+/* Celebration animation styles */
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-200px);
+  }
+}
+
+.celebration {
+  position: fixed;
+  font-size: 50px;
+  animation: floatUp 2s ease-out forwards;
+  z-index: 1000;
+  pointer-events: none;
+}
