@@ -291,7 +291,7 @@ socket.on('resetVotes', () => {
 function animateThumbsUp(color) {
   const thumbsUp = document.createElement('div');
   thumbsUp.className = 'celebration';
-  thumbsUp.textContent = '👍';
+  thumbsUp.textContent = '🎉';
   thumbsUp.style.color = color;
   const xPos = Math.random() * (window.innerWidth - 50);
   thumbsUp.style.left = `${xPos}px`;
