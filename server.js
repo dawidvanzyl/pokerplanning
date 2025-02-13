@@ -1,4 +1,3 @@
-// server.js
 const defaultCardSet = ["1", "2", "3", "5", "8", "13", "21", "?"];
 
 const express = require('express');
@@ -23,7 +22,7 @@ const estimatorIcons = [
 // Fixed icon for observers
 const observerIcon = "👀";
 
-// Rooms object: key = sessionId, value = { users: { socketId: userData }, lastActivity: timestamp }
+// Rooms object: key = sessionId, value = { users: { socketId: userData }, lastActivity: timestamp, cardSet }
 let rooms = {};
 
 // Helper: update lastActivity for a room
@@ -57,7 +56,7 @@ function allEstimatorsVoted(roomUsers) {
 setInterval(() => {
   const now = Date.now();
   for (const sessionId in rooms) {
-    if (now - rooms[sessionId].lastActivity > 600000) { // 600000 ms = 10 minutes
+    if (now - rooms[sessionId].lastActivity > 600000) { // 10 minutes
       io.to(sessionId).emit('sessionExpired', 'Session expired due to inactivity.');
       // Disconnect all sockets in this room.
       for (const socketId in rooms[sessionId].users) {
@@ -68,36 +67,31 @@ setInterval(() => {
       }
       console.log(`Session ${sessionId} expired due to inactivity.`);
       delete rooms[sessionId];
-      // Broadcast updated session list after removal.
       io.emit('sessionListUpdated', getActiveSessions());
     }
   }
-}, 60000); // check every 60 seconds
+}, 60000); // every 60 seconds
 
 io.on('connection', (socket) => {
   console.log('New connection:', socket.id);
 
-  // Allow observers to get the list of active sessions.
+  // Allow clients to get the list of active sessions.
   socket.on('getActiveSessions', () => {
     socket.emit('activeSessions', getActiveSessions());
   });
 
   // When a client joins, they send name, role, and sessionId.
   socket.on('join', (data) => {
-    const { name, role, sessionId, cardSet } = data;
+    const { name, role, sessionId } = data;
     if (!sessionId) {
       socket.emit('errorMessage', 'Session ID is required.');
       return;
     }
     if (role === 'observer') {
       if (!rooms[sessionId]) {
-        rooms[sessionId] = { users: {}, lastActivity: Date.now() };
-        // Always store a card set—even if the observer did not pick a custom one.
-        // If cardSet was provided (for example, if the observer chose a custom set or an existing option),
-        // use that; otherwise, explicitly store the default.
-        rooms[sessionId].cardSet = cardSet ? cardSet : defaultCardSet;
-        // Inform clients in this session of the defined card set.
-        io.to(sessionId).emit('cardSetDefined', rooms[sessionId].cardSet);
+        // Create a new session using the default card set.
+        rooms[sessionId] = { users: {}, lastActivity: Date.now(), cardSet: defaultCardSet };
+        io.to(sessionId).emit('cardSetDefined', defaultCardSet);
         io.emit('sessionListUpdated', getActiveSessions());
       }
     } else if (role === 'estimator') {
@@ -112,8 +106,8 @@ io.on('connection', (socket) => {
     const user = { name, role, vote: null, icon };
     rooms[sessionId].users[socket.id] = user;
     updateRoomActivity(sessionId);
-    if (role === 'estimator' && rooms[sessionId].cardSet) {
-      // Send the observer-defined card set to this estimator.
+    if (role === 'estimator') {
+      // Send the defined (default) card set to the estimator.
       socket.emit('cardSetDefined', rooms[sessionId].cardSet);
     }
     io.to(sessionId).emit('updateUsers', rooms[sessionId].users);
@@ -175,7 +169,6 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('updateUsers', rooms[roomId].users);
       if (Object.keys(rooms[roomId].users).length === 0) {
         delete rooms[roomId];
-        // Broadcast updated session list if the room becomes empty.
         io.emit('sessionListUpdated', getActiveSessions());
       }
     }

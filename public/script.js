@@ -11,14 +11,6 @@ const sessionSelect = document.getElementById('sessionSelect');
 const refreshSessionsBtn = document.getElementById('refreshSessionsBtn');
 const displaySessionId = document.getElementById('displaySessionId');
 
-// Observer-only card set UI elements
-const observerCardSetDiv = document.getElementById('observerCardSetDiv');
-const newCardSetDiv = document.getElementById('newCardSetDiv');
-const cardSetSelect = document.getElementById('cardSetSelect');
-const customCardSetInput = document.getElementById('customCardSetInput');
-const existingCardSetDiv = document.getElementById('existingCardSetDiv');
-const existingCardSetLabel = document.getElementById('existingCardSetLabel');
-
 const estimatorView = document.getElementById('estimatorView');
 const observerView = document.getElementById('observerView');
 const observerStatus = document.getElementById('observerStatus');
@@ -34,10 +26,10 @@ let role = null;
 let votesAreRevealed = false;
 let currentSelection = null;
 const defaultCardSet = ["1", "2", "3", "5", "8", "13", "21", "?"];
-// Use a mutable card deck array; it will be updated if a session defines one.
+// The card deck will always be the default.
 let cardValues = defaultCardSet.slice();
 
-// We'll store the latest sessions list for use in populating card set options.
+// We'll store the latest sessions list for use in populating sessionSelect.
 let sessionsList = [];
 
 // Utility function to generate a session ID (using three random words).
@@ -50,79 +42,6 @@ function generateSessionId() {
   return `${word1}-${word2}-${word3}`;
 }
 
-function populateCardSetDropdown() {
-  const selectElem = document.getElementById('cardSetSelect');
-  selectElem.innerHTML = '';
-
-  // Option 1: Default
-  const defaultOption = document.createElement('option');
-  defaultOption.value = defaultCardSet.join(', ');
-  defaultOption.textContent = `Default (${defaultCardSet.join(', ')})`;
-  selectElem.appendChild(defaultOption);
-
-  // Option 2: Custom sets from active sessions (deduplicated, excluding default)
-  const uniqueSets = new Set();
-  sessionsList.forEach(sess => {
-    if (sess.cardSet && sess.cardSet.join(', ') !== defaultCardSet.join(', ')) {
-      uniqueSets.add(sess.cardSet.join(', '));
-    }
-  });
-  uniqueSets.forEach(setStr => {
-    const option = document.createElement('option');
-    option.value = setStr;
-    option.textContent = setStr;
-    selectElem.appendChild(option);
-  });
-
-  // Option 3: "Custom"
-  const customOption = document.createElement('option');
-  customOption.value = 'custom';
-  customOption.textContent = 'Custom';
-  selectElem.appendChild(customOption);
-
-  // Default selection is the default option.
-  selectElem.value = defaultCardSet.join(', ');
-
-  // Hide the custom edit area initially.
-  document.getElementById('customEditDiv').style.display = 'none';
-}
-
-document.getElementById('cardSetSelect').addEventListener('change', function () {
-  const value = this.value;
-  const customEditDiv = document.getElementById('customEditDiv');
-  const customInput = document.getElementById('customCardSetInput');
-
-  if (value === 'custom') {
-    // When "Custom" is selected, show an empty text box for input.
-    customInput.value = "";
-    customEditDiv.style.display = 'block';
-  } else if (value !== defaultCardSet.join(', ')) {
-    // If a custom option (previously defined) is selected, show it for editing.
-    customInput.value = value;
-    customEditDiv.style.display = 'block';
-  } else {
-    // Default option selected; hide custom edit.
-    customEditDiv.style.display = 'none';
-  }
-});
-
-document.getElementById('deleteCustomBtn').addEventListener('click', function () {
-  const selectElem = document.getElementById('cardSetSelect');
-  const currentValue = selectElem.value;
-  if (currentValue !== defaultCardSet.join(', ') && currentValue !== 'custom') {
-    // Remove the option matching the current custom value.
-    for (let i = 0; i < selectElem.options.length; i++) {
-      if (selectElem.options[i].value === currentValue) {
-        selectElem.remove(i);
-        break;
-      }
-    }
-  }
-  // Reset the dropdown to default.
-  selectElem.value = defaultCardSet.join(', ');
-  document.getElementById('customEditDiv').style.display = 'none';
-});
-
 // Request active sessions from the server.
 function requestActiveSessions() {
   socket.emit('getActiveSessions');
@@ -133,7 +52,7 @@ socket.on('activeSessions', (sessions) => {
   sessionsList = sessions;
   sessionSelect.innerHTML = '';
   if (role === 'observer') {
-    // Always include the "Create New Session" option for observers.
+    // Observers can create a new session.
     const newOption = document.createElement('option');
     newOption.value = 'new';
     newOption.textContent = 'Create New Session';
@@ -143,10 +62,6 @@ socket.on('activeSessions', (sessions) => {
     const opt = document.createElement('option');
     opt.value = item.sessionId;
     opt.textContent = `Session ${item.sessionId} (${item.userCount} user${item.userCount === 1 ? '' : 's'})`;
-    // If this session has a card set defined, attach it as a data attribute.
-    if (item.cardSet && item.cardSet.length) {
-      opt.dataset.cardSet = item.cardSet.join(', ');
-    }
     sessionSelect.appendChild(opt);
   });
 });
@@ -165,9 +80,6 @@ socket.on('sessionListUpdated', (sessions) => {
     const opt = document.createElement('option');
     opt.value = item.sessionId;
     opt.textContent = `Session ${item.sessionId} (${item.userCount} user${item.userCount === 1 ? '' : 's'})`;
-    if (item.cardSet && item.cardSet.length) {
-      opt.dataset.cardSet = item.cardSet.join(', ');
-    }
     sessionSelect.appendChild(opt);
   });
 });
@@ -176,69 +88,9 @@ socket.on('sessionListUpdated', (sessions) => {
 roleSelect.addEventListener('change', () => {
   role = roleSelect.value;
   requestActiveSessions();
-  if (role === 'observer') {
-    sessionDropdownDiv.style.display = 'block';
-    observerCardSetDiv.style.display = 'block';
-    // Force the session dropdown to "new" and trigger change.
-    setTimeout(() => {
-      if (sessionSelect.options.length > 0) {
-        sessionSelect.value = 'new';
-        sessionSelect.dispatchEvent(new Event('change'));
-      }
-    }, 100);
-  } else {
-    observerCardSetDiv.style.display = 'none';
-  }
+  // No custom card set UI needed; simply show the session dropdown.
+  sessionDropdownDiv.style.display = 'block';
 });
-
-
-// When the session dropdown changes (only for observers), update the card set selection UI.
-sessionSelect.addEventListener('change', () => {
-  if (role !== 'observer') return;
-  if (sessionSelect.value === 'new') {
-    // "Create New Session" selected: show the new card set dropdown.
-    newCardSetDiv.style.display = 'block';
-    existingCardSetDiv.style.display = 'none';
-    populateCardSetDropdown();
-  } else {
-    // For an existing session, hide new session controls and display a label.
-    newCardSetDiv.style.display = 'none';
-    document.getElementById('customEditDiv').style.display = 'none';
-    existingCardSetDiv.style.display = 'block';
-    const selectedOption = sessionSelect.options[sessionSelect.selectedIndex];
-    const cs = selectedOption.dataset.cardSet || defaultCardSet.join(', ');
-    existingCardSetLabel.textContent = cs;
-  }
-});
-
-// Populate the new card set dropdown with the default, any previously defined sets, and a "Custom" option.
-function populateNewCardSetOptions() {
-  // Clear previous options.
-  cardSetSelect.innerHTML = '';
-  // Always include the default option.
-  const defOpt = document.createElement('option');
-  defOpt.value = 'default';
-  defOpt.textContent = `Default (${defaultCardSet.join(', ')})`;
-  cardSetSelect.appendChild(defOpt);
-  // Extract any unique card sets from the active sessions (excluding the default).
-  const uniqueSets = new Set();
-  sessionsList.forEach(sess => {
-    if (sess.cardSet && sess.cardSet.join(', ') !== defaultCardSet.join(', ')) {
-      uniqueSets.add(sess.cardSet.join(', '));
-    }
-  });
-  uniqueSets.forEach(setStr => {
-    const opt = document.createElement('option');
-    opt.value = setStr;
-    opt.textContent = setStr;
-    cardSetSelect.appendChild(opt);
-  });
-  // Always add the "Custom" option.
-  const customOpt = document.createElement('option');
-  customOpt.value = 'custom';
-  customOpt.textContent = 'Custom';
-  cardSetSelect.appendChild(customOpt);
-}
 
 // Join button handler.
 joinBtn.onclick = () => {
@@ -252,22 +104,11 @@ joinBtn.onclick = () => {
   }
   
   if (role === 'observer') {
-    let cardSet;
+    // If creating a new session, generate a new session ID.
     if (sessionId === 'new') {
-      // Generate a new session id.
       sessionId = generateSessionId();
-      const selectedValue = document.getElementById('cardSetSelect').value;
-      if (selectedValue === 'custom') {
-        cardSet = customCardSetInput.value.split(",").map(s => s.trim()).filter(s => s !== "");
-        if (cardSet.length === 0) {
-          alert("Please enter at least one card value for your custom card set.");
-          return;
-        }
-      } else {
-        cardSet = selectedValue.split(",").map(s => s.trim());
-      }
     }
-    socket.emit('join', { name, role, sessionId, cardSet });
+    socket.emit('join', { name, role, sessionId });
   } else {
     if (sessionId === 'new') {
       alert("Please select an active session.");
@@ -287,7 +128,6 @@ joinBtn.onclick = () => {
     renderCards();
     resetBtn.style.display = 'none';
   } else {
-    // Ensure the observer view is visible.
     observerView.style.display = 'block';
     resetBtn.style.display = 'inline-block';
     observerStatus.textContent = 'Waiting for all estimators to vote...';
@@ -324,7 +164,6 @@ resetBtn.onclick = () => {
   votesAreRevealed = false;
   currentSelection = null;
   socket.emit('reset');
-  // Reset observer status text.
   observerStatus.textContent = 'Waiting for all estimators to vote...';
 };
 

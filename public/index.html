@@ -1,91 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planning Poker</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="login">
+      <h2>Join Planning Poker Session</h2>
+      <input type="text" id="nameInput" placeholder="Enter your name" />
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Planning Poker</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
+      <!-- Role selection -->
+      <select id="roleSelect">
+        <option value="estimator">Estimator</option>
+        <option value="observer">Observer</option>
+      </select>
 
-<body>
-  <div id="login">
-    <h2>Join Planning Poker Session</h2>
-    <input type="text" id="nameInput" placeholder="Enter your name" />
-
-    <!-- Role selection -->
-    <select id="roleSelect">
-      <option value="estimator">Estimator</option>
-      <option value="observer">Observer</option>
-    </select>
-
-    <!-- Session selection dropdown (for both roles) -->
-    <div id="sessionDropdownDiv">
-      <select id="sessionSelect"></select>
-      <button id="refreshSessionsBtn">Refresh Sessions</button>
-    </div>
-
-    <!-- Observer-only card set selection -->
-    <div id="observerCardSetDiv" style="display: none;">
-      <!-- When creating a new session -->
-      <div id="newCardSetDiv" style="display: none;">
-        <label for="cardSetSelect">Select Card Set:</label>
-        <select id="cardSetSelect"></select>
-        <!-- This edit area appears when a custom option is selected -->
-        <div id="customEditDiv" style="display: none; margin-top: 5px;">
-          <input type="text" id="customCardSetInput" placeholder="Enter custom card set" style="width: 250px;" />
-          <button id="deleteCustomBtn">Delete</button>
-        </div>
+      <!-- Session selection dropdown (for both roles) -->
+      <div id="sessionDropdownDiv">
+        <select id="sessionSelect"></select>
+        <button id="refreshSessionsBtn">Refresh Sessions</button>
       </div>
-      <!-- When joining an existing session, show a label with the card set -->
-      <div id="existingCardSetDiv" style="display: none;">
-        <label>Card Set:</label>
-        <span id="existingCardSetLabel"></span>
+
+      <button id="joinBtn">Join</button>
+    </div>
+
+    <div id="session" style="display: none;">
+      <h1>Planning Poker Session</h1>
+      <!-- Display active session ID for all participants -->
+      <div id="sessionInfo">
+        <p>Session ID: <span id="displaySessionId"></span></p>
+      </div>
+
+      <div id="estimatorView" style="display: none;">
+        <p>Select your vote:</p>
+        <div id="cards" class="card-container"></div>
+      </div>
+
+      <div id="observerView" style="display: none;">
+        <h2>Observer Panel</h2>
+        <p id="observerStatus">Waiting for all estimators to vote...</p>
+        <button id="revealBtn">Reveal Votes</button>
+      </div>
+
+      <div id="results">
+        <!-- Results will be shown here once votes are revealed -->
+      </div>
+
+      <!-- Celebrate button appears when agreement is reached -->
+      <button id="celebrateBtn" style="display: none;">Celebrate!</button>
+
+      <!-- Reset round button: only visible to observers -->
+      <button id="resetBtn">Reset Round</button>
+      <div id="userList">
+        <h3>Participants</h3>
+        <ul id="users"></ul>
       </div>
     </div>
 
-    <button id="joinBtn">Join</button>
-  </div>
+    <!-- Container for celebration animations -->
+    <div id="celebration-container"></div>
 
-  <div id="session" style="display: none;">
-    <h1>Planning Poker Session</h1>
-    <!-- Display active session ID for all participants -->
-    <div id="sessionInfo">
-      <p>Session ID: <span id="displaySessionId"></span></p>
-    </div>
-
-    <div id="estimatorView" style="display: none;">
-      <p>Select your vote:</p>
-      <div id="cards" class="card-container"></div>
-    </div>
-
-    <div id="observerView" style="display: none;">
-      <h2>Observer Panel</h2>
-      <p id="observerStatus">Waiting for all estimators to vote...</p>
-      <button id="revealBtn">Reveal Votes</button>
-    </div>
-
-    <div id="results">
-      <!-- Results will be shown here once votes are revealed -->
-    </div>
-
-    <!-- Celebrate button appears when agreement is reached -->
-    <button id="celebrateBtn" style="display: none;">Celebrate!</button>
-
-    <!-- Reset round button: only visible to observers -->
-    <button id="resetBtn">Reset Round</button>
-    <div id="userList">
-      <h3>Participants</h3>
-      <ul id="users"></ul>
-    </div>
-  </div>
-
-  <!-- Container for celebration animations -->
-  <div id="celebration-container"></div>
-
-  <!-- Include Socket.IO client library -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
-</body>
-
+    <!-- Include Socket.IO client library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+  </body>
 </html>
