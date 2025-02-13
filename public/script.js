@@ -334,6 +334,12 @@ socket.on('cardSetDefined', (newCardSet) => {
   }
 });
 
+socket.on('sessionEnded', (msg) => {
+  alert(msg);
+  // Return to join screen by reloading the page (or you can show/hide appropriate UI elements)
+  location.reload();
+});
+
 // Automatically refresh active sessions on page load.
 window.addEventListener("load", () => {
   requestActiveSessions();

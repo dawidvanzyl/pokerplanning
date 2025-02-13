@@ -170,15 +170,33 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const roomId = socket.roomId;
     if (roomId && rooms[roomId]) {
+      // Remove the disconnected user from the room.
       delete rooms[roomId].users[socket.id];
-      io.to(roomId).emit('updateUsers', rooms[roomId].users);
-      if (Object.keys(rooms[roomId].users).length === 0) {
+  
+      // Check if any observers remain.
+      const observersRemaining = Object.values(rooms[roomId].users).some(
+        (user) => user.role === 'observer'
+      );
+  
+      if (!observersRemaining) {
+        // No observers remain: emit an event and disconnect all sockets in the room.
+        io.to(roomId).emit('sessionEnded', 'All observers have left. Session ended.');
+        
+        // Disconnect all sockets in the room.
+        for (const socketId in rooms[roomId].users) {
+          const sock = io.sockets.sockets.get(socketId);
+          if (sock) {
+            sock.disconnect(true);
+          }
+        }
         delete rooms[roomId];
         io.emit('sessionListUpdated', getActiveSessions());
+      } else {
+        io.to(roomId).emit('updateUsers', rooms[roomId].users);
       }
     }
     console.log('Disconnected:', socket.id);
-  });
+  });  
 });
 
 server.listen(PORT, () => {
