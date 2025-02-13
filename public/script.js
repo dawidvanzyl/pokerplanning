@@ -11,6 +11,11 @@ const sessionSelect = document.getElementById('sessionSelect');
 const refreshSessionsBtn = document.getElementById('refreshSessionsBtn');
 const displaySessionId = document.getElementById('displaySessionId');
 
+const observerCardSetDiv = document.getElementById('observerCardSetDiv');
+const cardSetSelect = document.getElementById('cardSetSelect');
+const customCardSetDiv = document.getElementById('customCardSetDiv');
+const customCardSetInput = document.getElementById('customCardSetInput');
+
 const estimatorView = document.getElementById('estimatorView');
 const observerView = document.getElementById('observerView');
 const observerStatus = document.getElementById('observerStatus');
@@ -26,10 +31,10 @@ let role = null;
 let votesAreRevealed = false;
 let currentSelection = null;
 const defaultCardSet = ["1", "2", "3", "5", "8", "13", "21", "?"];
-// The card deck will always be the default.
+// The card deck will come from the session's defined card set.
 let cardValues = defaultCardSet.slice();
 
-// We'll store the latest sessions list for use in populating sessionSelect.
+// We'll store the latest sessions list for populating sessionSelect.
 let sessionsList = [];
 
 // Utility function to generate a session ID (using three random words).
@@ -47,7 +52,7 @@ function requestActiveSessions() {
   socket.emit('getActiveSessions');
 }
 
-// When receiving active sessions, update our sessionsList and populate the session dropdown.
+// Populate the session dropdown.
 socket.on('activeSessions', (sessions) => {
   sessionsList = sessions;
   sessionSelect.innerHTML = '';
@@ -66,7 +71,7 @@ socket.on('activeSessions', (sessions) => {
   });
 });
 
-// Also update the session list automatically if the server broadcasts an update.
+// Also update the session list automatically.
 socket.on('sessionListUpdated', (sessions) => {
   sessionsList = sessions;
   sessionSelect.innerHTML = '';
@@ -84,12 +89,50 @@ socket.on('sessionListUpdated', (sessions) => {
   });
 });
 
-// When role changes, update UI immediately.
+// When role changes, update UI.
 roleSelect.addEventListener('change', () => {
   role = roleSelect.value;
   requestActiveSessions();
-  // No custom card set UI needed; simply show the session dropdown.
+  // Always show the session dropdown.
   sessionDropdownDiv.style.display = 'block';
+  
+  if (role === 'observer') {
+    // For observers, default the session dropdown to "new" and immediately show card set options.
+    // We wait a brief moment to ensure the session list has been populated.
+    setTimeout(() => {
+      sessionSelect.value = 'new';
+      observerCardSetDiv.style.display = 'block';
+      // Make sure the card set dropdown defaults to "default".
+      cardSetSelect.value = 'default';
+      customCardSetDiv.style.display = 'none';
+    }, 100);
+  } else {
+    // For estimators, hide observer-specific UI.
+    observerCardSetDiv.style.display = 'none';
+  }
+});
+
+// When the session dropdown changes (for observers).
+sessionSelect.addEventListener('change', () => {
+  if (role !== 'observer') return;
+  if (sessionSelect.value === 'new') {
+    // When creating a new session, show the card set selection UI.
+    observerCardSetDiv.style.display = 'block';
+    cardSetSelect.value = 'default';
+    customCardSetDiv.style.display = 'none';
+  } else {
+    // When joining an existing session, hide the card set selection UI.
+    observerCardSetDiv.style.display = 'none';
+  }
+});
+
+// When the card set selection changes.
+cardSetSelect.addEventListener('change', () => {
+  if (cardSetSelect.value === 'custom') {
+    customCardSetDiv.style.display = 'block';
+  } else {
+    customCardSetDiv.style.display = 'none';
+  }
 });
 
 // Join button handler.
@@ -103,13 +146,30 @@ joinBtn.onclick = () => {
     return;
   }
   
+  // For observers creating a new session, gather the card set.
+  let joinData = { name, role, sessionId };
   if (role === 'observer') {
-    // If creating a new session, generate a new session ID.
     if (sessionId === 'new') {
+      // Generate a new session ID.
       sessionId = generateSessionId();
+      joinData.sessionId = sessionId;
+      // Determine card set.
+      if (cardSetSelect.value === 'custom') {
+        const customCards = customCardSetInput.value.split(",").map(s => s.trim()).filter(s => s !== "");
+        if (customCards.length === 0) {
+          alert("Please enter at least one card value for your custom card set.");
+          return;
+        }
+        joinData.cardSet = customCards;
+      } else {
+        // Default card set.
+        joinData.cardSet = defaultCardSet;
+      }
     }
-    socket.emit('join', { name, role, sessionId });
+    // For observers joining an existing session, no card set is provided.
+    socket.emit('join', joinData);
   } else {
+    // Estimators must join an existing session.
     if (sessionId === 'new') {
       alert("Please select an active session.");
       return;
@@ -184,7 +244,7 @@ socket.on('allVoted', () => {
   }
 });
 
-// When votes are revealed, display results (with average and excluded votes).
+// When votes are revealed, display results.
 socket.on('votesRevealed', (users) => {
   votesAreRevealed = true;
   let estimatorVotes = [];
@@ -196,7 +256,6 @@ socket.on('votesRevealed', (users) => {
     }
   });
   resultsHTML += '</ul>';
-  // Calculate average using only numeric votes.
   const numericVotes = estimatorVotes.filter(vote => !isNaN(vote));
   let averageVote = 'N/A';
   if (numericVotes.length > 0) {
@@ -204,7 +263,6 @@ socket.on('votesRevealed', (users) => {
     averageVote = (sum / numericVotes.length).toFixed(2);
   }
   resultsHTML += `<p><strong>Average Vote:</strong> ${averageVote}</p>`;
-  // List non-numeric votes.
   const nonNumericVotes = estimatorVotes.filter(vote => isNaN(vote));
   if (nonNumericVotes.length > 0) {
     resultsHTML += `<p><strong>Excluded Votes:</strong> ${nonNumericVotes.join(', ')}</p>`;

@@ -23,6 +23,23 @@
         <button id="refreshSessionsBtn">Refresh Sessions</button>
       </div>
 
+      <!-- Observer-only card set selection for new sessions -->
+      <div id="observerCardSetDiv" style="display: none; margin-top: 10px;">
+        <label for="cardSetSelect">Choose Card Set:</label>
+        <select id="cardSetSelect">
+          <option value="default">Default (1, 2, 3, 5, 8, 13, 21, ?)</option>
+          <option value="custom">Custom</option>
+        </select>
+        <div id="customCardSetDiv" style="display: none; margin-top: 5px;">
+          <input
+            type="text"
+            id="customCardSetInput"
+            placeholder="Enter custom card set (comma separated)"
+            style="width: 250px;"
+          />
+        </div>
+      </div>
+
       <button id="joinBtn">Join</button>
     </div>
 

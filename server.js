@@ -80,18 +80,23 @@ io.on('connection', (socket) => {
     socket.emit('activeSessions', getActiveSessions());
   });
 
-  // When a client joins, they send name, role, and sessionId.
+  // When a client joins, they send name, role, sessionId, and (optionally) cardSet.
   socket.on('join', (data) => {
-    const { name, role, sessionId } = data;
+    const { name, role, sessionId, cardSet } = data;
     if (!sessionId) {
       socket.emit('errorMessage', 'Session ID is required.');
       return;
     }
     if (role === 'observer') {
       if (!rooms[sessionId]) {
-        // Create a new session using the default card set.
-        rooms[sessionId] = { users: {}, lastActivity: Date.now(), cardSet: defaultCardSet };
-        io.to(sessionId).emit('cardSetDefined', defaultCardSet);
+        // Create a new session.
+        // If a cardSet was provided (for a new session), use it; otherwise use the default.
+        rooms[sessionId] = {
+          users: {},
+          lastActivity: Date.now(),
+          cardSet: cardSet ? cardSet : defaultCardSet
+        };
+        io.to(sessionId).emit('cardSetDefined', rooms[sessionId].cardSet);
         io.emit('sessionListUpdated', getActiveSessions());
       }
     } else if (role === 'estimator') {
@@ -107,7 +112,7 @@ io.on('connection', (socket) => {
     rooms[sessionId].users[socket.id] = user;
     updateRoomActivity(sessionId);
     if (role === 'estimator') {
-      // Send the defined (default) card set to the estimator.
+      // Send the session's card set to the estimator.
       socket.emit('cardSetDefined', rooms[sessionId].cardSet);
     }
     io.to(sessionId).emit('updateUsers', rooms[sessionId].users);
