@@ -30,7 +30,8 @@ const celebrationContainer = document.getElementById('celebration-container');
 let role = null;
 let votesAreRevealed = false;
 let currentSelection = null;
-const defaultCardSet = ["1", "2", "3", "5", "8", "13", "21", "?"];
+const defaultCardSet = ["1", "3", "6", "9", "18", "24", "30"];
+
 // The card deck will come from the session's defined card set.
 let cardValues = defaultCardSet.slice();
 
