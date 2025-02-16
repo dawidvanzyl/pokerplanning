@@ -257,19 +257,48 @@ socket.on('votesRevealed', (users) => {
     }
   });
   resultsHTML += '</ul>';
-  const numericVotes = estimatorVotes.filter(vote => !isNaN(vote));
+
+  // Process numeric votes to compute highest, lowest and frequency distribution.
+  const numericVotes = estimatorVotes.filter(vote => !isNaN(vote)).map(Number);
+  let highest = 'N/A';
+  let lowest = 'N/A';
+  let distributionStr = '';
+
+  if (numericVotes.length > 0) {
+    highest = Math.max(...numericVotes);
+    lowest = Math.min(...numericVotes);
+
+    // Build frequency distribution.
+    let freq = {};
+    numericVotes.forEach(vote => {
+      freq[vote] = (freq[vote] || 0) + 1;
+    });
+    // Sort the vote values in descending order.
+    let sortedVotes = Object.keys(freq).map(Number).sort((a, b) => b - a);
+    distributionStr = sortedVotes.map(vote => `${vote} (${freq[vote]})`).join(', ');
+  }
+
+  resultsHTML += `<p><strong>Highest Vote:</strong> ${highest} | <strong>Lowest Vote:</strong> ${lowest}</p>`;
+  resultsHTML += `<p><strong>Vote Distribution:</strong> ${distributionStr}</p>`;
+
+  // Calculate average using only numeric votes.
   let averageVote = 'N/A';
   if (numericVotes.length > 0) {
-    const sum = numericVotes.reduce((acc, val) => acc + Number(val), 0);
+    const sum = numericVotes.reduce((acc, val) => acc + val, 0);
     averageVote = (sum / numericVotes.length).toFixed(2);
   }
   resultsHTML += `<p><strong>Average Vote:</strong> ${averageVote}</p>`;
+
+  // List non-numeric votes.
   const nonNumericVotes = estimatorVotes.filter(vote => isNaN(vote));
   if (nonNumericVotes.length > 0) {
     resultsHTML += `<p><strong>Excluded Votes:</strong> ${nonNumericVotes.join(', ')}</p>`;
   }
+
+  // Determine if there is consensus.
   const agreement = estimatorVotes.length > 0 && estimatorVotes.every(vote => vote === estimatorVotes[0]) ? 'Yes' : 'No';
   resultsHTML += `<p><strong>Agreement Reached:</strong> ${agreement}</p>`;
+
   resultsDiv.innerHTML = resultsHTML;
   celebrateBtn.style.display = agreement === 'Yes' ? 'inline-block' : 'none';
 });
