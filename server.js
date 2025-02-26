@@ -1,4 +1,4 @@
-const defaultCardSet = ["1", "3", "6", "9", "18", "24", "30"];
+const defaultCardSet = ["1", "3", "6", "9", "12", "18", "24", "30"];
 
 const express = require('express');
 const http = require('http');
