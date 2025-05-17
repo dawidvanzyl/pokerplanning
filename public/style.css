@@ -71,3 +71,23 @@ button {
   z-index: 1000;
   pointer-events: none;
 }
+
+/* Unicorn animation styles */
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-200px);
+  }
+}
+
+.unicorn {
+  position: fixed;
+  font-size: 50px;
+  animation: floatUp 4s ease-out forwards;
+  z-index: 1000;
+  pointer-events: none;
+}

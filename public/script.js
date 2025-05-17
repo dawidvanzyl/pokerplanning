@@ -26,6 +26,7 @@ const celebrateBtn = document.getElementById('celebrateBtn');
 const resultsDiv = document.getElementById('results');
 const usersUl = document.getElementById('users');
 const celebrationContainer = document.getElementById('celebration-container');
+const unicornContainer = document.getElementById('unicorn-container');
 
 let role = null;
 let votesAreRevealed = false;
@@ -312,24 +313,34 @@ socket.on('votesRevealed', (users) => {
     resultsHTML += `<p><strong>Excluded Votes:</strong> ${nonNumericVotes.join(', ')}</p>`;
   }
 
-  // Count how many numeric votes match the normalised value
-  const matchingVotes = numericVotes.filter(v => v === normalised).length;
-  const totalVotes = numericVotes.length;
-  const matchRatio = totalVotes > 0 ? matchingVotes / totalVotes : 0;
+  if (estimatorVotes.length > 2) {
+    // Count how many numeric votes match the normalised value
+    const matchingVotes = numericVotes.filter(v => v === normalised).length;
+    const totalVotes = numericVotes.length;
+    const matchRatio = totalVotes > 0 ? matchingVotes / totalVotes : 0;
+  
+    // Team agreement if ≥65% match the normalised vote
+    const teamAgreement = matchRatio >= 0.65;
+  
+    // Determine if there is strict consensus (everyone voted same) or teamAgreement (>=65%)
+    const strictConsensus = estimatorVotes.every(vote => vote === estimatorVotes[0]);
+    if (strictConsensus) {
+      resultsHTML += `<p><strong>A mythical alignment unfolded 🦄</strong></p>`;
 
-  // Team agreement if ≥65% match the normalised vote
-  const teamAgreement = matchRatio >= 0.65;
-
-  // Show percentage matching
-  resultsHTML += `<p><strong>Match Percentage:</strong> ${(matchRatio * 100).toFixed(0)}%</p>`;
-
-  // Determine if there is strict consensus (everyone voted same) or teamAgreement (>=65%)
-  const strictConsensus = estimatorVotes.length > 0 && estimatorVotes.every(vote => vote === estimatorVotes[0]);
-  resultsHTML += `<p><strong>Strict Consensus:</strong> ${strictConsensus ? 'Yes' : 'No'}</p>`;
-  resultsHTML += `<p><strong>Team Agreement (≥65% on ${normalised}):</strong> ${teamAgreement ? 'Yes' : 'No'}</p>`;
+      // trigger unicorn immediately
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          animateUnicorn(getRandomColor());
+        }, i * 500);
+      }
+    }  
+    
+    resultsHTML += `<p><strong>Team Agreement (${(matchRatio * 100).toFixed(0)}% on ${normalised}):</strong> ${teamAgreement ? 'Yes' : 'No'}</p>`;  
+    
+    celebrateBtn.style.display = teamAgreement ? 'inline-block' : 'none';
+  }
 
   resultsDiv.innerHTML = resultsHTML;
-  celebrateBtn.style.display = teamAgreement ? 'inline-block' : 'none';
 });
 
 // Clear results on reset.
@@ -347,18 +358,33 @@ socket.on('resetVotes', () => {
 });
 
 // Celebration animation.
-function animateThumbsUp(color) {
-  const thumbsUp = document.createElement('div');
-  thumbsUp.className = 'celebration';
-  thumbsUp.textContent = '🎉';
-  thumbsUp.style.color = color;
+function animateCelebration(color) {
+  const celebration = document.createElement('div');
+  celebration.className = 'celebration';
+  celebration.textContent = '🎉';
+  celebration.style.color = color;
   const xPos = Math.random() * (window.innerWidth - 50);
-  thumbsUp.style.left = `${xPos}px`;
-  thumbsUp.style.top = `${window.innerHeight - 100}px`;
-  celebrationContainer.appendChild(thumbsUp);
+  celebration.style.left = `${xPos}px`;
+  celebration.style.top = `${window.innerHeight - 100}px`;
+  celebrationContainer.appendChild(celebration);
   setTimeout(() => {
-    celebrationContainer.removeChild(thumbsUp);
+    celebrationContainer.removeChild(celebration);
   }, 2000);
+}
+
+// Unicorn animation.
+function animateUnicorn(color) {
+  const unicorn = document.createElement('div');
+  unicorn.className = 'unicorn';
+  unicorn.textContent = '🦄';
+  unicorn.style.color = color;
+  const xPos = Math.random() * (window.innerWidth - 50);
+  unicorn.style.left = `${xPos}px`;
+  unicorn.style.top = `${window.innerHeight - 100}px`;
+  celebrationContainer.appendChild(unicorn);
+  setTimeout(() => {
+    celebrationContainer.removeChild(unicorn);
+  }, 4000);
 }
 
 function getRandomColor() {
@@ -372,7 +398,7 @@ celebrateBtn.onclick = () => {
 socket.on('celebrate', () => {
   for (let i = 0; i < 5; i++) {
     setTimeout(() => {
-      animateThumbsUp(getRandomColor());
+      animateCelebration(getRandomColor());
     }, i * 300);
   }
 });
