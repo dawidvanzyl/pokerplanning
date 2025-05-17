@@ -22,7 +22,7 @@ const estimatorIcons = [
 // Fixed icon for observers
 const observerIcon = "👀";
 
-// Rooms object: key = sessionId, value = { users: { socketId: userData }, lastActivity: timestamp, cardSet }
+// Rooms object: key = sessionId, value = { users: { socketId: userData }, lastActivity: timestamp, cardSet, votesRevealed: bool }
 let rooms = {};
 
 // Helper: update lastActivity for a room
@@ -94,7 +94,8 @@ io.on('connection', (socket) => {
         rooms[sessionId] = {
           users: {},
           lastActivity: Date.now(),
-          cardSet: cardSet ? cardSet : defaultCardSet
+          cardSet: cardSet ? cardSet : defaultCardSet,
+          votesRevealed: false
         };
         io.to(sessionId).emit('cardSetDefined', rooms[sessionId].cardSet);
         io.emit('sessionListUpdated', getActiveSessions());
@@ -102,6 +103,11 @@ io.on('connection', (socket) => {
     } else if (role === 'estimator') {
       if (!rooms[sessionId]) {
         socket.emit('errorMessage', 'Session does not exist. Ask an observer to create one first.');
+        return;
+      }
+
+      if (rooms[sessionId].votesRevealed) {
+        socket.emit('errorMessage', 'Cannot join: votes have already been revealed.');
         return;
       }
     }
@@ -119,7 +125,7 @@ io.on('connection', (socket) => {
       io.to(sessionId).emit('waitingForVotes');
     }
     io.to(sessionId).emit('updateUsers', rooms[sessionId].users);
-  }); 
+  });
 
   // When an estimator submits a vote.
   socket.on('vote', (vote) => {
@@ -139,6 +145,7 @@ io.on('connection', (socket) => {
   socket.on('revealVotes', () => {
     const roomId = socket.roomId;
     if (!roomId || !rooms[roomId]) return;
+    rooms[roomId].votesRevealed = true;
     updateRoomActivity(roomId);
     io.to(roomId).emit('votesRevealed', rooms[roomId].users);
   });
@@ -153,6 +160,7 @@ io.on('connection', (socket) => {
           rooms[roomId].users[key].vote = null;
         }
       }
+      rooms[roomId].votesRevealed = false;
       updateRoomActivity(roomId);
       io.to(roomId).emit('updateUsers', rooms[roomId].users);
       io.to(roomId).emit('resetVotes');
@@ -175,16 +183,16 @@ io.on('connection', (socket) => {
     if (roomId && rooms[roomId]) {
       // Remove the disconnected user from the room.
       delete rooms[roomId].users[socket.id];
-  
+
       // Check if any observers remain.
       const observersRemaining = Object.values(rooms[roomId].users).some(
         (user) => user.role === 'observer'
       );
-  
+
       if (!observersRemaining) {
         // No observers remain: emit an event and disconnect all sockets in the room.
         io.to(roomId).emit('sessionEnded', 'All observers have left. Session ended.');
-        
+
         // Disconnect all sockets in the room.
         for (const socketId in rooms[roomId].users) {
           const sock = io.sockets.sockets.get(socketId);
@@ -196,7 +204,7 @@ io.on('connection', (socket) => {
         io.emit('sessionListUpdated', getActiveSessions());
       } else {
         const roomUsers = rooms[roomId].users;
-        
+
         // Emit updated user list
         io.to(roomId).emit('updateUsers', roomUsers);
 
@@ -212,7 +220,7 @@ io.on('connection', (socket) => {
       }
     }
     console.log('Disconnected:', socket.id);
-  });  
+  });
 });
 
 server.listen(PORT, () => {

@@ -318,10 +318,10 @@ socket.on('votesRevealed', (users) => {
     const matchingVotes = numericVotes.filter(v => v === normalised).length;
     const totalVotes = numericVotes.length;
     const matchRatio = totalVotes > 0 ? matchingVotes / totalVotes : 0;
-  
+
     // Team agreement if ≥65% match the normalised vote
     const teamAgreement = matchRatio >= 0.65;
-  
+
     // Determine if there is strict consensus (everyone voted same) or teamAgreement (>=65%)
     const strictConsensus = estimatorVotes.every(vote => vote === estimatorVotes[0]);
     if (strictConsensus) {
@@ -333,10 +333,10 @@ socket.on('votesRevealed', (users) => {
           animateUnicorn(getRandomColor());
         }, i * 500);
       }
-    }  
-    
-    resultsHTML += `<p><strong>Team Agreement (${(matchRatio * 100).toFixed(0)}% on ${normalised}):</strong> ${teamAgreement ? 'Yes' : 'No'}</p>`;  
-    
+    }
+
+    resultsHTML += `<p><strong>Team Agreement (${(matchRatio * 100).toFixed(0)}% on ${normalised}):</strong> ${teamAgreement ? 'Yes' : 'No'}</p>`;
+
     celebrateBtn.style.display = teamAgreement ? 'inline-block' : 'none';
   }
 
@@ -405,6 +405,10 @@ socket.on('celebrate', () => {
 
 socket.on('errorMessage', (msg) => {
   alert(msg);
+
+  if (msg.includes('already been revealed')) {
+    location.reload();
+  }
 });
 
 socket.on('sessionExpired', (msg) => {
