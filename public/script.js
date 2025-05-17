@@ -96,7 +96,7 @@ roleSelect.addEventListener('change', () => {
   requestActiveSessions();
   // Always show the session dropdown.
   sessionDropdownDiv.style.display = 'block';
-  
+
   if (role === 'observer') {
     // For observers, default the session dropdown to "new" and immediately show card set options.
     // We wait a brief moment to ensure the session list has been populated.
@@ -141,12 +141,12 @@ joinBtn.onclick = () => {
   const name = nameInput.value.trim();
   role = roleSelect.value;
   let sessionId = sessionSelect.value;
-  
+
   if (!name || !sessionId) {
     alert('Please enter your name and select a session.');
     return;
   }
-  
+
   // For observers creating a new session, gather the card set.
   let joinData = { name, role, sessionId };
   if (role === 'observer') {
@@ -177,12 +177,12 @@ joinBtn.onclick = () => {
     }
     socket.emit('join', { name, role, sessionId });
   }
-  
+
   // Hide the login view and show the session view.
   loginDiv.style.display = 'none';
   sessionDiv.style.display = 'block';
   displaySessionId.textContent = sessionId;
-  
+
   // Show the appropriate panel based on role.
   if (role === 'estimator') {
     estimatorView.style.display = 'block';
@@ -312,12 +312,24 @@ socket.on('votesRevealed', (users) => {
     resultsHTML += `<p><strong>Excluded Votes:</strong> ${nonNumericVotes.join(', ')}</p>`;
   }
 
-  // Determine if there is consensus.
-  const agreement = estimatorVotes.length > 0 && estimatorVotes.every(vote => vote === estimatorVotes[0]) ? 'Yes' : 'No';
-  resultsHTML += `<p><strong>Agreement Reached:</strong> ${agreement}</p>`;
+  // Count how many numeric votes match the normalised value
+  const matchingVotes = numericVotes.filter(v => v === normalised).length;
+  const totalVotes = numericVotes.length;
+  const matchRatio = totalVotes > 0 ? matchingVotes / totalVotes : 0;
+
+  // Team agreement if ≥65% match the normalised vote
+  const teamAgreement = matchRatio >= 0.65;
+
+  // Show percentage matching
+  resultsHTML += `<p><strong>Match Percentage:</strong> ${(matchRatio * 100).toFixed(0)}%</p>`;
+
+  // Determine if there is strict consensus (everyone voted same) or teamAgreement (>=65%)
+  const strictConsensus = estimatorVotes.length > 0 && estimatorVotes.every(vote => vote === estimatorVotes[0]);
+  resultsHTML += `<p><strong>Strict Consensus:</strong> ${strictConsensus ? 'Yes' : 'No'}</p>`;
+  resultsHTML += `<p><strong>Team Agreement (≥65% on ${normalised}):</strong> ${teamAgreement ? 'Yes' : 'No'}</p>`;
 
   resultsDiv.innerHTML = resultsHTML;
-  celebrateBtn.style.display = agreement === 'Yes' ? 'inline-block' : 'none';
+  celebrateBtn.style.display = teamAgreement ? 'inline-block' : 'none';
 });
 
 // Clear results on reset.
