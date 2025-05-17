@@ -87,6 +87,8 @@ io.on('connection', (socket) => {
       socket.emit('errorMessage', 'Session ID is required.');
       return;
     }
+
+    socket.join(sessionId);
     if (role === 'observer') {
       if (!rooms[sessionId]) {
         // Create a new session.
@@ -111,7 +113,7 @@ io.on('connection', (socket) => {
         return;
       }
     }
-    socket.join(sessionId);
+    
     socket.roomId = sessionId;
     let icon = role === 'observer' ? observerIcon : estimatorIcons[Math.floor(Math.random() * estimatorIcons.length)];
     const user = { name, role, vote: null, icon };

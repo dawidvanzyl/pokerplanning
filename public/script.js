@@ -253,81 +253,69 @@ socket.on('waitingForVotes', () => {
 // When votes are revealed, display results.
 socket.on('votesRevealed', (users) => {
   votesAreRevealed = true;
-  let estimatorVotes = [];
-  let resultsHTML = '<h2>Results</h2><ul>';
-  Object.values(users).forEach(user => {
-    if (user.role === 'estimator') {
-      estimatorVotes.push(user.vote);
-      resultsHTML += `<li>${user.icon} ${user.name}: ${user.vote}</li>`;
-    }
-  });
-  resultsHTML += '</ul>';
 
-  // Process numeric votes to compute highest, lowest and frequency distribution.
-  const numericVotes = estimatorVotes.filter(vote => !isNaN(vote)).map(Number);
-  let highest = 'N/A';
-  let lowest = 'N/A';
-  let rawAvg = 0;
-  let distributionStr = '';
+  // 1) collect all estimator votes (as values)
+  const votes = Object.values(users)
+    .filter(u => u.role === 'estimator')
+    .map(u => u.vote);
 
-  if (numericVotes.length > 0) {
-    highest = Math.max(...numericVotes);
-    lowest = Math.min(...numericVotes);
-    rawAvg = numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length;
+  // 2) map to indexes
+  const idxVotes = votes
+    .map(v => {
+      const i = cardValues.indexOf(v);
+      return i >= 0 ? i : null;
+    })
+    .filter(i => i !== null);
 
-    // Build frequency distribution.
-    let freq = {};
-    numericVotes.forEach(vote => {
-      freq[vote] = (freq[vote] || 0) + 1;
-    });
-    // Sort the vote values in descending order.
-    let sortedVotes = Object.keys(freq).map(Number).sort((a, b) => b - a);
-    distributionStr = sortedVotes.map(vote => `${vote} (${freq[vote]})`).join(', ');
+  // early exit
+  if (idxVotes.length === 0) {
+    resultsDiv.innerHTML = '<p>No votes to show.</p>';
+    return;
   }
 
-  // Calculate average using only numeric votes.
-  let averageVote = 'N/A';
-  if (numericVotes.length > 0) {
-    const sum = numericVotes.reduce((acc, val) => acc + val, 0);
-    averageVote = (sum / numericVotes.length).toFixed(2);
-  }
+  // 3) compute stats on indexes
+  const maxIdx = Math.max(...idxVotes);
+  const minIdx = Math.min(...idxVotes);
+  const avgIdxRaw = idxVotes.reduce((a,b)=>a+b,0) / idxVotes.length;
 
-  const cvs = cardValues.map(Number).sort((a, b) => a - b);
-  let normalised = cvs[0];
-  let smallestDiff = Infinity;
-  for (const v of cvs) {
-    const diff = Math.abs(rawAvg - v);
-    if (diff < smallestDiff) {
-      smallestDiff = diff;
-      normalised = v;
-    }
-  }
+  // round to nearest integer index
+  const avgIdxRounded = Math.round(avgIdxRaw);
 
-  resultsHTML += `<p><strong>Highest Vote:</strong> ${highest} | <strong>Lowest Vote:</strong> ${lowest} | <strong>Average Vote:</strong> ${averageVote}</p>`;
-  resultsHTML += `<p><strong>Vote Distribution:</strong> ${distributionStr}</p>`;
-  resultsHTML += `<p><strong>Normalised Vote:</strong> ${normalised}</p>`;
+  // 4) distribution by index
+  const freq = {};
+  idxVotes.forEach(i => freq[i] = (freq[i]||0) + 1);
+  const distStr = Object.keys(freq)
+    .sort((a,b)=>b-a)
+    .map(i => `${cardValues[i]} (${freq[i]})`)
+    .join(', ');
 
-  // List non-numeric votes.
-  const nonNumericVotes = estimatorVotes.filter(vote => isNaN(vote));
-  if (nonNumericVotes.length > 0) {
-    resultsHTML += `<p><strong>Excluded Votes:</strong> ${nonNumericVotes.join(', ')}</p>`;
-  }
+  // 5) agreement checks
+  const matchCount = idxVotes.filter(i => i === avgIdxRounded).length;
+  const matchPct = Math.round(matchCount / idxVotes.length * 100);
+  const teamAgreement = matchPct >= 65;
+  const strictConsensus = idxVotes.every(i => i === idxVotes[0]);
 
-  if (estimatorVotes.length > 2) {
-    // Count how many numeric votes match the normalised value
-    const matchingVotes = numericVotes.filter(v => v === normalised).length;
-    const totalVotes = numericVotes.length;
-    const matchRatio = totalVotes > 0 ? matchingVotes / totalVotes : 0;
+  let resultsHTML = `
+    <h2>Results</h2>
+    <ul>
+      ${Object.values(users).map(u =>
+        u.role==='estimator'
+          ? `<li>${u.icon} ${u.name}: ${u.vote}</li>`
+          : ''
+      ).join('')}
+    </ul>`;
 
-    // Team agreement if ≥65% match the normalised vote
-    const teamAgreement = matchRatio >= 0.65;
+  resultsHTML += 
+    `<p>
+      <strong>Highest Vote:</strong> ${cardValues[maxIdx]} |
+      <strong>Lowest Vote:</strong> ${cardValues[minIdx]}
+    </p>`;
+  resultsHTML += `<p><strong>Vote Distribution:</strong> ${distStr}</p>`;
+  resultsHTML += `<p><strong>Average Vote:</strong> ${cardValues[avgIdxRounded]}</p>`;
 
-    // Determine if there is strict consensus (everyone voted same) or teamAgreement (>=65%)
-    const strictConsensus = estimatorVotes.every(vote => vote === estimatorVotes[0]);
+  if (votes.length > 2) {
     if (strictConsensus) {
       resultsHTML += `<p><strong>A mythical alignment unfolded 🦄</strong></p>`;
-
-      // trigger unicorn immediately
       for (let i = 0; i < 15; i++) {
         setTimeout(() => {
           animateUnicorn(getRandomColor());
@@ -335,7 +323,7 @@ socket.on('votesRevealed', (users) => {
       }
     }
 
-    resultsHTML += `<p><strong>Team Agreement (${(matchRatio * 100).toFixed(0)}% on ${normalised}):</strong> ${teamAgreement ? 'Yes' : 'No'}</p>`;
+    resultsHTML += `<p><strong>Team Agreement (${matchPct}% on ${cardValues[avgIdxRounded]}):</strong> ${teamAgreement? 'Yes':'No'}</p>`;
 
     celebrateBtn.style.display = teamAgreement ? 'inline-block' : 'none';
   }
