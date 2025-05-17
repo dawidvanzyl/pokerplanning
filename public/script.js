@@ -266,11 +266,13 @@ socket.on('votesRevealed', (users) => {
   const numericVotes = estimatorVotes.filter(vote => !isNaN(vote)).map(Number);
   let highest = 'N/A';
   let lowest = 'N/A';
+  let rawAvg = 0;
   let distributionStr = '';
 
   if (numericVotes.length > 0) {
     highest = Math.max(...numericVotes);
     lowest = Math.min(...numericVotes);
+    rawAvg = numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length;
 
     // Build frequency distribution.
     let freq = {};
@@ -282,16 +284,27 @@ socket.on('votesRevealed', (users) => {
     distributionStr = sortedVotes.map(vote => `${vote} (${freq[vote]})`).join(', ');
   }
 
-  resultsHTML += `<p><strong>Highest Vote:</strong> ${highest} | <strong>Lowest Vote:</strong> ${lowest}</p>`;
-  resultsHTML += `<p><strong>Vote Distribution:</strong> ${distributionStr}</p>`;
-
   // Calculate average using only numeric votes.
   let averageVote = 'N/A';
   if (numericVotes.length > 0) {
     const sum = numericVotes.reduce((acc, val) => acc + val, 0);
     averageVote = (sum / numericVotes.length).toFixed(2);
   }
-  resultsHTML += `<p><strong>Average Vote:</strong> ${averageVote}</p>`;
+
+  const cvs = cardValues.map(Number).sort((a, b) => a - b);
+  let normalised = cvs[0];
+  let smallestDiff = Infinity;
+  for (const v of cvs) {
+    const diff = Math.abs(rawAvg - v);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      normalised = v;
+    }
+  }
+
+  resultsHTML += `<p><strong>Highest Vote:</strong> ${highest} | <strong>Lowest Vote:</strong> ${lowest} | <strong>Average Vote:</strong> ${averageVote}</p>`;
+  resultsHTML += `<p><strong>Vote Distribution:</strong> ${distributionStr}</p>`;
+  resultsHTML += `<p><strong>Normalised Vote:</strong> ${normalised}</p>`;
 
   // List non-numeric votes.
   const nonNumericVotes = estimatorVotes.filter(vote => isNaN(vote));
