@@ -114,6 +114,9 @@ io.on('connection', (socket) => {
     if (role === 'estimator') {
       // Send the session's card set to the estimator.
       socket.emit('cardSetDefined', rooms[sessionId].cardSet);
+
+      // Notify observers that we are waiting for new vote(s) again
+      io.to(sessionId).emit('waitingForVotes');
     }
     io.to(sessionId).emit('updateUsers', rooms[sessionId].users);
   }); 
@@ -192,7 +195,20 @@ io.on('connection', (socket) => {
         delete rooms[roomId];
         io.emit('sessionListUpdated', getActiveSessions());
       } else {
-        io.to(roomId).emit('updateUsers', rooms[roomId].users);
+        const roomUsers = rooms[roomId].users;
+        
+        // Emit updated user list
+        io.to(roomId).emit('updateUsers', roomUsers);
+
+        // If estimators remain, check voting status
+        const estimatorsRemaining = Object.values(roomUsers).some(u => u.role === 'estimator');
+        if (estimatorsRemaining) {
+          if (allEstimatorsVoted(roomUsers)) {
+            io.to(roomId).emit('allVoted');
+          } else {
+            io.to(roomId).emit('waitingForVotes');
+          }
+        }
       }
     }
     console.log('Disconnected:', socket.id);

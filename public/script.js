@@ -245,6 +245,10 @@ socket.on('allVoted', () => {
   }
 });
 
+socket.on('waitingForVotes', () => {
+  document.getElementById('observerStatus').textContent = 'Waiting for all estimators to vote...';
+});
+
 // When votes are revealed, display results.
 socket.on('votesRevealed', (users) => {
   votesAreRevealed = true;
